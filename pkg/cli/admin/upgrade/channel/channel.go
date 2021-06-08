@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	configv1client "github.com/openshift/client-go/config/clientset/versioned"
 	"github.com/spf13/cobra"
@@ -76,7 +77,10 @@ func (o *Options) Complete(f kcmdutil.Factory, cmd *cobra.Command, args []string
 
 func (o *Options) Run() error {
 	ctx := context.TODO()
+	var count int = 1
+FETCH:
 	cv, err := o.Client.ConfigV1().ClusterVersions().Get(ctx, "version", metav1.GetOptions{})
+	count = count + 1
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return fmt.Errorf("no cluster version information available - you must be connected to an OpenShift version 4 server to fetch the current version")
@@ -110,7 +114,13 @@ func (o *Options) Run() error {
 			}
 		}
 	} else if o.Channel != "" {
-		fmt.Fprintf(o.ErrOut, "warning: No channels known to be compatible with the current version %q; unable to validate %q.\n", cv.Status.Desired.Version, o.Channel)
+		if count > 3 {
+			fmt.Fprintf(o.ErrOut, "warning: No channels known to be compatible with the current version %q; unable to validate %q.\n", cv.Status.Desired.Version, o.Channel)
+		} else {
+			time.Sleep(5 * time.Minute)
+			goto FETCH
+		}
+
 	}
 
 	if o.Channel == "" {
